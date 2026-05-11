@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tensões – Farmácia da Liga</title>
 
-  <!-- Firebase SDK v10 (compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
@@ -28,7 +27,16 @@
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { -webkit-font-smoothing: antialiased; }
-    body { font-family: Inter, 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; }
+    body { font-family: Inter, 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; transition: background .3s; }
+
+    /* ── ALERTA FUNDO PULSANTE ── */
+    body.ALERTA {
+      animation: bgFlash 1s ease-in-out infinite alternate;
+    }
+    @keyframes bgFlash {
+      from { background: #f5f2ed; }
+      to   { background: #ffd5d5; }
+    }
 
     .app { max-width: 760px; margin: 0 auto; padding: 24px 18px 48px; }
 
@@ -37,14 +45,12 @@
     .logo-icon svg { color: #fff; }
     .logo-name { font-size: 1.05rem; font-weight: 800; }
     .logo-sub  { font-size: .78rem; color: var(--muted); font-weight: 600; }
-
     .conn { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; font-weight: 700; padding: 4px 10px; border-radius: var(--r-pill); margin-left: 10px; }
     .conn .dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; }
     .conn.online .dot  { background: #2dce89; }
     .conn.offline .dot { background: #e63757; }
 
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; }
-
     .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
     .card-title  { font-size: 1.65rem; font-weight: 900; line-height: 1.1; }
     .card-desc   { margin-top: 6px; color: var(--muted); font-size: .93rem; line-height: 1.5; max-width: 72ch; }
@@ -69,29 +75,99 @@
     .timer-value { font-size: 2.6rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; }
     .timer-value.urgent { color: var(--danger); }
 
-    .alert-banner { display: none; margin-top: 18px; padding: 14px 16px; border-radius: 16px; background: rgba(182,34,61,.09); border: 1px solid rgba(182,34,61,.28); font-weight: 800; color: #7f1228; font-size: 1rem; }
+    .alert-banner { display: none; margin-top: 18px; padding: 16px 18px; border-radius: 16px; background: rgba(182,34,61,.12); border: 2px solid rgba(182,34,61,.40); font-weight: 900; color: #7f1228; font-size: 1.1rem; animation: bannerPulse .8s ease-in-out infinite alternate; }
     .alert-banner.show { display: flex; align-items: center; gap: 10px; }
+    @keyframes bannerPulse {
+      from { background: rgba(182,34,61,.10); }
+      to   { background: rgba(182,34,61,.25); }
+    }
 
+    /* ── OVERLAY ALERTA GIGANTE ── */
+    #alertOverlay {
+      display: none;
+      position: fixed; inset: 0;
+      z-index: 99998;
+      background: rgba(100, 0, 10, 0.55);
+      backdrop-filter: blur(3px);
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 0;
+      pointer-events: none;
+    }
+    #alertOverlay.show { display: flex; }
+
+    #alertBox {
+      pointer-events: all;
+      width: 100%;
+      background: linear-gradient(160deg, #c9203f, #7f1228);
+      color: #fff;
+      padding: 28px 28px 32px;
+      border-top: 4px solid rgba(255,255,255,.30);
+      box-shadow: 0 -20px 60px rgba(127,18,40,.60);
+      animation: slideUp .35s cubic-bezier(.16,1,.3,1), pulseBox 1.1s ease-in-out infinite alternate .35s;
+      position: relative;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    @keyframes pulseBox {
+      from { box-shadow: 0 -20px 50px rgba(127,18,40,.55); }
+      to   { box-shadow: 0 -20px 80px rgba(200,10,40,.80); }
+    }
+
+    #alertBox .alert-emoji { font-size: 3rem; line-height: 1; margin-bottom: 10px; display: block; animation: shake .5s ease-in-out infinite; }
+    @keyframes shake {
+      0%,100% { transform: rotate(-6deg) scale(1.1); }
+      50%      { transform: rotate(6deg)  scale(1.2); }
+    }
+    #alertBox .alert-msg {
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      line-height: 1.15;
+      margin-bottom: 10px;
+      text-shadow: 0 2px 12px rgba(0,0,0,.25);
+    }
+    #alertBox .alert-sub {
+      font-size: clamp(1rem, 2.5vw, 1.3rem);
+      font-weight: 700;
+      opacity: .92;
+      margin-bottom: 18px;
+    }
+    #alertBox .alert-op {
+      font-size: .95rem;
+      opacity: .80;
+      margin-bottom: 20px;
+    }
+    #alertBox .alert-dismiss {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,.22);
+      border: 2px solid rgba(255,255,255,.40);
+      color: #fff;
+      border-radius: 14px;
+      padding: 12px 22px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    #alertBox .alert-dismiss:hover { background: rgba(255,255,255,.32); }
+
+    /* ── HISTORY ── */
     .history-section { margin-top: 24px; }
     .history-title   { font-size: .82rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
     .history-list    { display: grid; gap: 8px; max-height: 200px; overflow-y: auto; }
     .history-item    { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; font-size: .88rem; }
-    .hi-left   { font-weight: 700; }
-    .hi-right  { color: var(--muted); font-size: .8rem; }
+    .hi-left  { font-weight: 700; }
+    .hi-right { color: var(--muted); font-size: .8rem; }
     .hi-alerted { color: var(--danger); font-weight: 800; font-size: .8rem; }
 
-    /* ── TOAST ── */
-    #toastHost { position: fixed; right: 20px; bottom: 20px; z-index: 999999; display: grid; gap: 12px; pointer-events: none; }
-    .toast { min-width: min(440px, calc(100vw - 28px)); max-width: 480px; border-radius: 24px; padding: 20px 20px 18px 22px; color: #fff; background: linear-gradient(135deg, #c9203f, #7f1228); border: 2px solid rgba(255,255,255,.22); box-shadow: 0 28px 50px rgba(127,18,40,.42); transform: translateY(20px) scale(.97); opacity: 0; transition: opacity 200ms ease, transform 200ms ease; animation: pulseToast 1.2s ease-in-out infinite alternate; position: relative; }
-    .toast.show { opacity: 1; transform: translateY(0) scale(1); }
-    .toast-title { font-size: 1.22rem; font-weight: 900; text-transform: uppercase; letter-spacing: .03em; margin-bottom: 6px; }
-    .toast-body  { font-size: 1rem; font-weight: 700; line-height: 1.4; }
-    .toast small { display: block; margin-top: 8px; font-size: .82rem; opacity: .9; }
-    .toast-close { position: absolute; top: 12px; right: 14px; background: rgba(255,255,255,.20); border: none; color: #fff; width: 28px; height: 28px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; pointer-events: all; display: flex; align-items: center; justify-content: center; }
-    @keyframes pulseToast { from { box-shadow: 0 20px 36px rgba(127,18,40,.32); } to { box-shadow: 0 32px 58px rgba(127,18,40,.54); } }
-
     /* ── MODAL ── */
-    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(20,14,6,.55); backdrop-filter: blur(4px); z-index: 9000; align-items: center; justify-content: center; padding: 16px; }
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(20,14,6,.55); backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center; padding: 16px; }
     .modal-backdrop.open { display: flex; }
     .modal { background: var(--surface); border-radius: 20px; padding: 28px 24px 24px; width: 100%; max-width: 400px; box-shadow: 0 32px 60px rgba(20,14,6,.22); }
     .modal h2 { font-size: 1.2rem; font-weight: 800; margin-bottom: 6px; }
@@ -110,8 +186,7 @@
       .app { padding: 14px 12px 48px; }
       .grid { grid-template-columns: 1fr; }
       .card-header { flex-direction: column; }
-      #toastHost { left: 10px; right: 10px; bottom: 10px; }
-      .toast { min-width: 100%; max-width: 100%; }
+      #alertBox .alert-msg { font-size: 1.5rem; }
     }
   </style>
 </head>
@@ -135,7 +210,7 @@
     <div class="card-header">
       <div>
         <div class="card-title">Tensões</div>
-        <div class="card-desc">Prima o botão para registar que um utente está a fazer a medição. Ao fim de 12 minutos sem desativação, todos os ecrãs abertos recebem um alerta visível. <strong>Qualquer operador pode desativar a sessão.</strong></div>
+        <div class="card-desc">Prima o botão para registar que um utente está a fazer a medição. Ao fim de 12 minutos surge um alerta em todos os ecrãs. <strong>Qualquer operador pode desativar.</strong></div>
       </div>
       <div id="statusPill" class="pill">Inativo</div>
     </div>
@@ -144,7 +219,7 @@
       <div>
         <button id="tensoesBtn" class="btn-tensoes" type="button">👩🏼‍⚕️👨🏼‍⚕️ Tensões</button>
         <p class="helper" id="helperText">Prima para iniciar. O estado sincroniza em tempo real em todos os computadores.</p>
-        <div id="alertBanner" class="alert-banner"><span>⚠️</span><span>Utente nas tensões!!!! — remover imediatamente.</span></div>
+        <div id="alertBanner" class="alert-banner"><span>🚨</span><span>UTENTE NAS TENSÕES — remover imediatamente!</span></div>
       </div>
       <div class="meta">
         <div class="info-box">
@@ -171,7 +246,16 @@
   </div>
 </div>
 
-<div id="toastHost" aria-live="assertive" aria-atomic="true"></div>
+<!-- OVERLAY ALERTA GIGANTE -->
+<div id="alertOverlay">
+  <div id="alertBox">
+    <span class="alert-emoji">🚨</span>
+    <div class="alert-msg">Utente nas Tensões!!!!</div>
+    <div class="alert-sub">Dirigir-se de imediato à zona de medição e retirar o utente.</div>
+    <div class="alert-op" id="alertOp"></div>
+    <button class="alert-dismiss" id="alertDismiss">✕ &nbsp;Já fui buscar o utente</button>
+  </div>
+</div>
 
 <!-- Modal -->
 <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true">
@@ -187,7 +271,7 @@
   </div>
 </div>
 
-<!-- ═══════════════ FIREBASE CONFIG ═══════════════ -->
+<!-- FIREBASE CONFIG -->
 <script>
   const firebaseConfig = {
     apiKey:            "AIzaSyCy-pJVEbXkpF6UgB1oyUz9H1279Ykfzys",
@@ -201,70 +285,126 @@
   firebase.initializeApp(firebaseConfig);
 </script>
 
-<!-- ═══════════════ APP LOGIC ═══════════════ -->
+<!-- APP LOGIC -->
 <script>
 (function () {
   'use strict';
 
-  const DURATION_MS    = 12 * 60 * 1000;
-  const STATE_PATH     = 'tensoes/estado';
-  const HISTORY_PATH   = 'tensoes/historico';
-  const HISTORY_LIMIT  = 10;
+  const DURATION_MS  = 12 * 60 * 1000;
+  const STATE_PATH   = 'tensoes/estado';
+  const HISTORY_PATH = 'tensoes/historico';
+  const HIST_LIMIT   = 10;
 
-  const db = firebase.database();
-  const stateRef   = db.ref(STATE_PATH);
-  const histRef    = db.ref(HISTORY_PATH);
+  const db       = firebase.database();
+  const stateRef = db.ref(STATE_PATH);
+  const histRef  = db.ref(HISTORY_PATH);
 
   // DOM
-  const btn         = document.getElementById('tensoesBtn');
-  const timerVal    = document.getElementById('timerVal');
-  const operatorVal = document.getElementById('operatorVal');
-  const stateVal    = document.getElementById('stateVal');
-  const statusPill  = document.getElementById('statusPill');
-  const helperText  = document.getElementById('helperText');
-  const alertBanner = document.getElementById('alertBanner');
-  const toastHost   = document.getElementById('toastHost');
-  const historyList = document.getElementById('historyList');
-  const connBadge   = document.getElementById('connBadge');
-  const connText    = document.getElementById('connText');
+  const btn          = document.getElementById('tensoesBtn');
+  const timerVal     = document.getElementById('timerVal');
+  const operatorVal  = document.getElementById('operatorVal');
+  const stateVal     = document.getElementById('stateVal');
+  const statusPill   = document.getElementById('statusPill');
+  const helperText   = document.getElementById('helperText');
+  const alertBanner  = document.getElementById('alertBanner');
+  const alertOverlay = document.getElementById('alertOverlay');
+  const alertOp      = document.getElementById('alertOp');
+  const alertDismiss = document.getElementById('alertDismiss');
+  const connBadge    = document.getElementById('connBadge');
+  const connText     = document.getElementById('connText');
+  const historyList  = document.getElementById('historyList');
 
   // Modal
-  const backdrop    = document.getElementById('modalBackdrop');
-  const modalTitle  = document.getElementById('modalTitle');
-  const modalDesc   = document.getElementById('modalDesc');
-  const codeInput   = document.getElementById('codeInput');
-  const modalCancel = document.getElementById('modalCancel');
-  const modalConfirm= document.getElementById('modalConfirm');
-  let modalCallback = null;
+  const backdrop     = document.getElementById('modalBackdrop');
+  const modalTitle   = document.getElementById('modalTitle');
+  const modalDesc    = document.getElementById('modalDesc');
+  const codeInput    = document.getElementById('codeInput');
+  const modalCancel  = document.getElementById('modalCancel');
+  const modalConfirm = document.getElementById('modalConfirm');
+  let modalCallback  = null;
 
-  let localState  = null;
-  let toastEl     = null;
-  let toastVis    = false;
-  let alertMarked = false; // evita marcar alert múltiplas vezes
+  let localState   = null;
+  let alertMarked  = false;
+  let overlayShown = false;
+
+  // som gerado por Web Audio API
+  var audioCtx = null;
+  function beep() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(660, audioCtx.currentTime + 0.15);
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.30);
+      gain.gain.setValueAtTime(0.28, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.55);
+      osc.start(audioCtx.currentTime);
+      osc.stop(audioCtx.currentTime + 0.55);
+    } catch(e) {}
+  }
+
+  // piscar título da aba
+  var origTitle   = document.title;
+  var titleFlip   = false;
+  var titleTimer  = null;
+  function startTitleFlash() {
+    if (titleTimer) return;
+    titleTimer = setInterval(function () {
+      titleFlip = !titleFlip;
+      document.title = titleFlip ? '🚨 UTENTE NAS TENSÕES!!!!' : origTitle;
+    }, 700);
+  }
+  function stopTitleFlash() {
+    clearInterval(titleTimer); titleTimer = null;
+    document.title = origTitle;
+    titleFlip = false;
+  }
+
+  // som repetido enquanto alerta activo
+  var soundTimer = null;
+  function startSound() {
+    if (soundTimer) return;
+    beep();
+    soundTimer = setInterval(beep, 4000);
+  }
+  function stopSound() {
+    clearInterval(soundTimer); soundTimer = null;
+  }
 
   // ── Modal ─────────────────────────────────────────────
-  function openModal(title, desc, confirmDanger) {
+  function openModal(title, desc, danger) {
     return new Promise(function (resolve) {
       modalTitle.textContent = title;
       modalDesc.textContent  = desc;
       codeInput.value = '';
-      modalConfirm.className = 'btn-confirm' + (confirmDanger ? ' danger' : '');
+      modalConfirm.className = 'btn-confirm' + (danger ? ' danger' : '');
       backdrop.classList.add('open');
       setTimeout(function () { codeInput.focus(); }, 50);
       modalCallback = resolve;
     });
   }
-  function closeModal(val) {
+  function closeModal(v) {
     backdrop.classList.remove('open');
-    if (modalCallback) { modalCallback(val); modalCallback = null; }
+    if (modalCallback) { modalCallback(v); modalCallback = null; }
   }
   modalCancel.addEventListener('click', function () { closeModal(null); });
   modalConfirm.addEventListener('click', function () { closeModal(codeInput.value.trim() || null); });
   codeInput.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') closeModal(codeInput.value.trim() || null);
+    if (e.key === 'Enter')  closeModal(codeInput.value.trim() || null);
     if (e.key === 'Escape') closeModal(null);
   });
   backdrop.addEventListener('click', function (e) { if (e.target === backdrop) closeModal(null); });
+
+  // ── Dismiss overlay (apenas esconde visualmente, não termina sessão) ──
+  alertDismiss.addEventListener('click', function () {
+    alertOverlay.classList.remove('show');
+    overlayShown = false;
+    stopSound();
+    // Não termina sessão — o botão principal ainda está vermelho
+  });
 
   // ── Button ────────────────────────────────────────────
   btn.addEventListener('click', handleClick);
@@ -273,7 +413,6 @@
     btn.disabled = true;
     try {
       if (!localState || !localState.active) {
-        // ACTIVAR — pede código do operador que inicia
         var code = await openModal('Iniciar medição de tensões', 'Introduza o seu código de operador para iniciar.');
         if (!code) return;
         await stateRef.set({
@@ -284,60 +423,49 @@
           alertSent:    false
         });
       } else {
-        // DESACTIVAR — qualquer operador pode desligar (apenas pede código para registo)
         var code = await openModal('Desativar sessão', 'Introduza o seu código de operador para terminar a sessão.', true);
         if (!code) return;
         var wasAlerted = localState.alertSent || false;
         var startedBy  = localState.operatorCode || '—';
         var startedAt  = localState.startedAt || null;
-        // Apagar estado
-        await stateRef.set({
-          active:       false,
-          operatorCode: '',
-          startedAt:    null,
-          endsAt:       null,
-          alertSent:    false
-        });
-        // Guardar histórico
-        await histRef.push({
-          startedBy:  startedBy,
-          endedBy:    code,
-          startedAt:  startedAt,
-          endedAt:    Date.now(),
-          alerted:    wasAlerted
-        });
-        hideToast();
-        alertMarked = false;
+        await stateRef.set({ active: false, operatorCode: '', startedAt: null, endsAt: null, alertSent: false });
+        await histRef.push({ startedBy: startedBy, endedBy: code, startedAt: startedAt, endedAt: Date.now(), alerted: wasAlerted });
+        hideAlertAll();
       }
     } catch (err) {
-      console.error('Erro Firebase:', err);
       alert('Erro de ligação. Verifique a sua ligação à internet.');
     } finally {
       btn.disabled = false;
     }
   }
 
-  // ── Realtime listener ─────────────────────────────────
+  function hideAlertAll() {
+    alertOverlay.classList.remove('show');
+    overlayShown = false;
+    alertMarked  = false;
+    document.body.classList.remove('ALERTA');
+    stopSound();
+    stopTitleFlash();
+  }
+
+  // ── Firebase listeners ────────────────────────────────
   stateRef.on('value', function (snap) {
     localState = snap.val();
     render();
   });
 
-  // ── History listener ──────────────────────────────────
-  histRef.orderByChild('endedAt').limitToLast(HISTORY_LIMIT).on('value', function (snap) {
+  histRef.orderByChild('endedAt').limitToLast(HIST_LIMIT).on('value', function (snap) {
     var items = [];
-    snap.forEach(function (child) { items.unshift(child.val()); });
+    snap.forEach(function (c) { items.unshift(c.val()); });
     renderHistory(items);
   });
 
-  // ── Connection state ──────────────────────────────────
   db.ref('.info/connected').on('value', function (snap) {
-    var online = snap.val() === true;
-    connBadge.className = 'conn ' + (online ? 'online' : 'offline');
-    connText.textContent = online ? 'Online' : 'Offline';
+    var ok = snap.val() === true;
+    connBadge.className = 'conn ' + (ok ? 'online' : 'offline');
+    connText.textContent = ok ? 'Online' : 'Offline';
   });
 
-  // ── Tick ──────────────────────────────────────────────
   setInterval(function () { if (localState && localState.active) render(); }, 1000);
 
   // ── Render ────────────────────────────────────────────
@@ -352,8 +480,7 @@
       stateVal.textContent = 'Aguarda início';
       helperText.textContent = 'Prima para iniciar. O estado sincroniza em tempo real em todos os computadores.';
       alertBanner.classList.remove('show');
-      hideToast();
-      alertMarked = false;
+      hideAlertAll();
       return;
     }
 
@@ -368,51 +495,38 @@
     operatorVal.textContent = localState.operatorCode || '—';
     timerVal.textContent    = expired ? '00:00' : fmtTime(remaining);
     timerVal.classList.toggle('urgent', remaining < 90000);
-    stateVal.textContent    = expired ? 'Remover utente!' : 'Em contagem';
+    stateVal.textContent    = expired ? '⚠ Remover utente!' : 'Em contagem';
     helperText.textContent  = 'Qualquer operador pode desativar. Prima o botão e introduza o seu código.';
 
     if (!expired) {
       alertBanner.classList.remove('show');
-      hideToast();
+      if (!overlayShown) {
+        document.body.classList.remove('ALERTA');
+        stopTitleFlash();
+        stopSound();
+      }
     } else {
       alertBanner.classList.add('show');
-      showToast();
-      if (!alertMarked && !localState.alertSent) {
+
+      if (!alertMarked) {
         alertMarked = true;
-        stateRef.update({ alertSent: true }).catch(function () {});
+        // mostrar overlay
+        overlayShown = true;
+        alertOp.textContent = 'Sessão iniciada pelo operador: ' + (localState.operatorCode || '—');
+        alertOverlay.classList.add('show');
+        // fundo vermelho pulsante
+        document.body.classList.add('ALERTA');
+        // piscar título da aba
+        startTitleFlash();
+        // som
+        startSound();
+        // marcar no Firebase
+        if (!localState.alertSent) {
+          stateRef.update({ alertSent: true }).catch(function () {});
+        }
+        // notificação do browser
         tryNotification();
       }
-    }
-  }
-
-  // ── Toast ─────────────────────────────────────────────
-  function showToast() {
-    if (toastVis) return;
-    toastVis = true;
-    var t = document.createElement('div');
-    t.className = 'toast';
-    t.innerHTML =
-      '<button class="toast-close" aria-label="Fechar">✕</button>' +
-      '<div class="toast-title">🚨 Utente nas tensões!!!!</div>' +
-      '<div class="toast-body">Dirigir-se de imediato à zona de medição e retirar o utente.</div>' +
-      '<small>Iniciado pelo operador: ' + esc(localState ? localState.operatorCode : '—') + '</small>';
-    t.querySelector('.toast-close').addEventListener('click', function () {
-      t.classList.remove('show');
-      toastVis = false;
-      setTimeout(function () { if (t.parentNode) t.remove(); }, 250);
-    });
-    toastHost.appendChild(t);
-    toastEl = t;
-    requestAnimationFrame(function () { t.classList.add('show'); });
-  }
-
-  function hideToast() {
-    if (!toastVis) return;
-    toastVis = false;
-    if (toastEl) {
-      toastEl.classList.remove('show');
-      var ref = toastEl; toastEl = null;
-      setTimeout(function () { if (ref.parentNode) ref.remove(); }, 250);
     }
   }
 
@@ -420,13 +534,13 @@
   function tryNotification() {
     if (!('Notification' in window)) return;
     if (Notification.permission === 'granted') {
-      try { new Notification('🚨 Utente nas tensões!!!!', { body: 'Dirigir-se de imediato à zona de medição.' }); } catch (e) {}
+      try { new Notification('🚨 UTENTE NAS TENSÕES!!!!', { body: 'Dirigir-se de imediato à zona de medição.', requireInteraction: true }); } catch(e) {}
     } else if (Notification.permission !== 'denied') {
       Notification.requestPermission().then(function (p) {
         if (p === 'granted') {
-          try { new Notification('🚨 Utente nas tensões!!!!', { body: 'Dirigir-se de imediato à zona de medição.' }); } catch (e) {}
+          try { new Notification('🚨 UTENTE NAS TENSÕES!!!!', { body: 'Dirigir-se de imediato à zona de medição.', requireInteraction: true }); } catch(e) {}
         }
-      }).catch(function () {});
+      }).catch(function(){});
     }
   }
 
@@ -439,18 +553,16 @@
     historyList.innerHTML = items.map(function (h) {
       var ts   = h.endedAt ? new Date(h.endedAt) : null;
       var time = ts ? ts.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'}) + ' ' + ts.toLocaleDateString('pt-PT') : '—';
-      var sameOp = h.startedBy === h.endedBy;
       return '<div class="history-item">' +
-        '<span class="hi-left">Op. <strong>' + esc(h.startedBy||'—') + '</strong> → deslig. por <strong>' + esc(h.endedBy||'—') + '</strong>' + (sameOp ? ' (mesmo)' : '') + '</span>' +
+        '<span class="hi-left">Op. <strong>' + esc(h.startedBy||'—') + '</strong> → deslig. por <strong>' + esc(h.endedBy||'—') + '</strong></span>' +
         (h.alerted ? '<span class="hi-alerted">⚠ alerta</span>' : '') +
         '<span class="hi-right">' + time + '</span>' +
         '</div>';
     }).join('');
   }
 
-  // ── Utils ─────────────────────────────────────────────
   function fmtTime(ms) {
-    var s = Math.max(0, Math.ceil(ms / 1000));
+    var s = Math.max(0, Math.ceil(ms/1000));
     return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
   }
   function esc(t) {

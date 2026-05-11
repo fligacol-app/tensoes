@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tensões – Farmácia da Liga</title>
+
+  <!-- Firebase SDK v10 (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+  <style>
+    :root {
+      --bg:          #f5f2ed;
+      --surface:     #ffffff;
+      --surface-2:   #eeebe6;
+      --border:      rgba(30,24,14,.13);
+      --text:        #1e180e;
+      --muted:       #6b6459;
+      --primary:     #0c6a70;
+      --primary-hov: #084a4e;
+      --danger:      #b6223d;
+      --danger-hov:  #7f1228;
+      --shadow:      0 16px 40px rgba(20,14,6,.11);
+      --radius:      22px;
+      --r-pill:      9999px;
+      --transition:  160ms cubic-bezier(.16,1,.3,1);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-font-smoothing: antialiased; }
+    body { font-family: Inter, 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; }
+
+    .app { max-width: 760px; margin: 0 auto; padding: 24px 18px 48px; }
+
+    .logo-row { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+    .logo-icon { width: 38px; height: 38px; background: var(--primary); border-radius: 11px; display: flex; align-items: center; justify-content: center; }
+    .logo-icon svg { color: #fff; }
+    .logo-name { font-size: 1.05rem; font-weight: 800; }
+    .logo-sub  { font-size: .78rem; color: var(--muted); font-weight: 600; }
+
+    .conn { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; font-weight: 700; padding: 4px 10px; border-radius: var(--r-pill); margin-left: 10px; }
+    .conn .dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; }
+    .conn.online .dot  { background: #2dce89; }
+    .conn.offline .dot { background: #e63757; }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; }
+
+    .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
+    .card-title  { font-size: 1.65rem; font-weight: 900; line-height: 1.1; }
+    .card-desc   { margin-top: 6px; color: var(--muted); font-size: .93rem; line-height: 1.5; max-width: 72ch; }
+
+    .pill { padding: 7px 13px; border-radius: var(--r-pill); font-size: .78rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--border); background: var(--surface-2); white-space: nowrap; flex-shrink: 0; }
+    .pill.active { background: rgba(182,34,61,.10); color: #7f1228; border-color: rgba(182,34,61,.28); }
+
+    .grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; }
+
+    .btn-tensoes { width: 100%; min-height: 96px; border: none; border-radius: 20px; padding: 18px; font-size: 1.5rem; font-weight: 900; letter-spacing: .02em; color: #fff; background: linear-gradient(170deg, var(--primary), var(--primary-hov)); cursor: pointer; box-shadow: 0 12px 28px rgba(12,106,112,.30); transition: transform var(--transition), box-shadow var(--transition), filter var(--transition); }
+    .btn-tensoes:hover  { transform: translateY(-2px); filter: brightness(1.04); }
+    .btn-tensoes:active { transform: translateY(1px) scale(.995); }
+    .btn-tensoes.armed  { background: linear-gradient(170deg, var(--danger), var(--danger-hov)); box-shadow: 0 14px 34px rgba(182,34,61,.36); }
+    .btn-tensoes:disabled { opacity: .55; cursor: not-allowed; }
+
+    .helper { margin-top: 10px; color: var(--muted); font-size: .88rem; line-height: 1.5; }
+
+    .meta { display: grid; gap: 12px; }
+    .info-box   { background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 13px 15px; }
+    .info-label { font-size: .73rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+    .info-value { font-size: 1.05rem; font-weight: 800; line-height: 1.2; word-break: break-word; }
+    .timer-value { font-size: 2.6rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; }
+    .timer-value.urgent { color: var(--danger); }
+
+    .alert-banner { display: none; margin-top: 18px; padding: 14px 16px; border-radius: 16px; background: rgba(182,34,61,.09); border: 1px solid rgba(182,34,61,.28); font-weight: 800; color: #7f1228; font-size: 1rem; }
+    .alert-banner.show { display: flex; align-items: center; gap: 10px; }
+
+    .history-section { margin-top: 24px; }
+    .history-title   { font-size: .82rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+    .history-list    { display: grid; gap: 8px; max-height: 200px; overflow-y: auto; }
+    .history-item    { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; font-size: .88rem; }
+    .hi-left   { font-weight: 700; }
+    .hi-right  { color: var(--muted); font-size: .8rem; }
+    .hi-alerted { color: var(--danger); font-weight: 800; font-size: .8rem; }
+
+    /* ── TOAST ── */
+    #toastHost { position: fixed; right: 20px; bottom: 20px; z-index: 999999; display: grid; gap: 12px; pointer-events: none; }
+    .toast { min-width: min(440px, calc(100vw - 28px)); max-width: 480px; border-radius: 24px; padding: 20px 20px 18px 22px; color: #fff; background: linear-gradient(135deg, #c9203f, #7f1228); border: 2px solid rgba(255,255,255,.22); box-shadow: 0 28px 50px rgba(127,18,40,.42); transform: translateY(20px) scale(.97); opacity: 0; transition: opacity 200ms ease, transform 200ms ease; animation: pulseToast 1.2s ease-in-out infinite alternate; position: relative; }
+    .toast.show { opacity: 1; transform: translateY(0) scale(1); }
+    .toast-title { font-size: 1.22rem; font-weight: 900; text-transform: uppercase; letter-spacing: .03em; margin-bottom: 6px; }
+    .toast-body  { font-size: 1rem; font-weight: 700; line-height: 1.4; }
+    .toast small { display: block; margin-top: 8px; font-size: .82rem; opacity: .9; }
+    .toast-close { position: absolute; top: 12px; right: 14px; background: rgba(255,255,255,.20); border: none; color: #fff; width: 28px; height: 28px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; pointer-events: all; display: flex; align-items: center; justify-content: center; }
+    @keyframes pulseToast { from { box-shadow: 0 20px 36px rgba(127,18,40,.32); } to { box-shadow: 0 32px 58px rgba(127,18,40,.54); } }
+
+    /* ── MODAL ── */
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(20,14,6,.55); backdrop-filter: blur(4px); z-index: 9000; align-items: center; justify-content: center; padding: 16px; }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: var(--surface); border-radius: 20px; padding: 28px 24px 24px; width: 100%; max-width: 400px; box-shadow: 0 32px 60px rgba(20,14,6,.22); }
+    .modal h2 { font-size: 1.2rem; font-weight: 800; margin-bottom: 6px; }
+    .modal p  { color: var(--muted); font-size: .9rem; margin-bottom: 18px; }
+    .modal label { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; display: block; margin-bottom: 6px; }
+    .modal input { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 1rem; font-weight: 700; background: var(--surface-2); outline: none; margin-bottom: 16px; transition: border-color var(--transition); }
+    .modal input:focus { border-color: var(--primary); }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .btn-cancel  { padding: 10px 18px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); font-size: .9rem; font-weight: 700; cursor: pointer; }
+    .btn-confirm { padding: 10px 20px; border-radius: 12px; background: var(--primary); color: #fff; border: none; font-size: .9rem; font-weight: 800; cursor: pointer; }
+    .btn-confirm:hover { background: var(--primary-hov); }
+    .btn-confirm.danger { background: var(--danger); }
+    .btn-confirm.danger:hover { background: var(--danger-hov); }
+
+    @media (max-width: 680px) {
+      .app { padding: 14px 12px 48px; }
+      .grid { grid-template-columns: 1fr; }
+      .card-header { flex-direction: column; }
+      #toastHost { left: 10px; right: 10px; bottom: 10px; }
+      .toast { min-width: 100%; max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <div class="logo-row">
+    <div class="logo-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-name">Farmácia da Liga</div>
+      <div class="logo-sub">Monitor de Tensões</div>
+    </div>
+    <span id="connBadge" class="conn offline"><span class="dot"></span><span id="connText">A ligar…</span></span>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Tensões</div>
+        <div class="card-desc">Prima o botão para registar que um utente está a fazer a medição. Ao fim de 12 minutos sem desativação, todos os ecrãs abertos recebem um alerta visível. <strong>Qualquer operador pode desativar a sessão.</strong></div>
+      </div>
+      <div id="statusPill" class="pill">Inativo</div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <button id="tensoesBtn" class="btn-tensoes" type="button">💉 Tensões</button>
+        <p class="helper" id="helperText">Prima para iniciar. O estado sincroniza em tempo real em todos os computadores.</p>
+        <div id="alertBanner" class="alert-banner"><span>⚠️</span><span>Utente nas tensões!!!! — remover imediatamente.</span></div>
+      </div>
+      <div class="meta">
+        <div class="info-box">
+          <div class="info-label">Iniciado por</div>
+          <div id="operatorVal" class="info-value">—</div>
+        </div>
+        <div class="info-box">
+          <div class="info-label">Tempo restante</div>
+          <div id="timerVal" class="timer-value">12:00</div>
+        </div>
+        <div class="info-box">
+          <div class="info-label">Estado</div>
+          <div id="stateVal" class="info-value">Aguarda início</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="history-section">
+      <div class="history-title">Sessões recentes</div>
+      <div id="historyList" class="history-list">
+        <div style="color:var(--muted);font-size:.87rem;padding:4px 2px">Sem registos ainda.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toastHost" aria-live="assertive" aria-atomic="true"></div>
+
+<!-- Modal -->
+<div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true">
+  <div class="modal">
+    <h2 id="modalTitle">Código de Operador</h2>
+    <p id="modalDesc">Introduza o seu código de operador.</p>
+    <label for="codeInput">Código</label>
+    <input id="codeInput" type="text" inputmode="text" autocomplete="off" placeholder="ex. 001" maxlength="30">
+    <div class="modal-actions">
+      <button class="btn-cancel" id="modalCancel">Cancelar</button>
+      <button class="btn-confirm" id="modalConfirm">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ FIREBASE CONFIG ═══════════════ -->
+<script>
+  const firebaseConfig = {
+    apiKey:            "AIzaSyCy-pJVEbXkpF6UgB1oyUz9H1279Ykfzys",
+    authDomain:        "quadro-site-farmacia.firebaseapp.com",
+    databaseURL:       "https://quadro-site-farmacia-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId:         "quadro-site-farmacia",
+    storageBucket:     "quadro-site-farmacia.firebasestorage.app",
+    messagingSenderId: "550919386378",
+    appId:             "1:550919386378:web:e340a8f0f4b691dae5f6f3"
+  };
+  firebase.initializeApp(firebaseConfig);
+</script>
+
+<!-- ═══════════════ APP LOGIC ═══════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  const DURATION_MS    = 12 * 60 * 1000;
+  const STATE_PATH     = 'tensoes/estado';
+  const HISTORY_PATH   = 'tensoes/historico';
+  const HISTORY_LIMIT  = 10;
+
+  const db = firebase.database();
+  const stateRef   = db.ref(STATE_PATH);
+  const histRef    = db.ref(HISTORY_PATH);
+
+  // DOM
+  const btn         = document.getElementById('tensoesBtn');
+  const timerVal    = document.getElementById('timerVal');
+  const operatorVal = document.getElementById('operatorVal');
+  const stateVal    = document.getElementById('stateVal');
+  const statusPill  = document.getElementById('statusPill');
+  const helperText  = document.getElementById('helperText');
+  const alertBanner = document.getElementById('alertBanner');
+  const toastHost   = document.getElementById('toastHost');
+  const historyList = document.getElementById('historyList');
+  const connBadge   = document.getElementById('connBadge');
+  const connText    = document.getElementById('connText');
+
+  // Modal
+  const backdrop    = document.getElementById('modalBackdrop');
+  const modalTitle  = document.getElementById('modalTitle');
+  const modalDesc   = document.getElementById('modalDesc');
+  const codeInput   = document.getElementById('codeInput');
+  const modalCancel = document.getElementById('modalCancel');
+  const modalConfirm= document.getElementById('modalConfirm');
+  let modalCallback = null;
+
+  let localState  = null;
+  let toastEl     = null;
+  let toastVis    = false;
+  let alertMarked = false; // evita marcar alert múltiplas vezes
+
+  // ── Modal ─────────────────────────────────────────────
+  function openModal(title, desc, confirmDanger) {
+    return new Promise(function (resolve) {
+      modalTitle.textContent = title;
+      modalDesc.textContent  = desc;
+      codeInput.value = '';
+      modalConfirm.className = 'btn-confirm' + (confirmDanger ? ' danger' : '');
+      backdrop.classList.add('open');
+      setTimeout(function () { codeInput.focus(); }, 50);
+      modalCallback = resolve;
+    });
+  }
+  function closeModal(val) {
+    backdrop.classList.remove('open');
+    if (modalCallback) { modalCallback(val); modalCallback = null; }
+  }
+  modalCancel.addEventListener('click', function () { closeModal(null); });
+  modalConfirm.addEventListener('click', function () { closeModal(codeInput.value.trim() || null); });
+  codeInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') closeModal(codeInput.value.trim() || null);
+    if (e.key === 'Escape') closeModal(null);
+  });
+  backdrop.addEventListener('click', function (e) { if (e.target === backdrop) closeModal(null); });
+
+  // ── Button ────────────────────────────────────────────
+  btn.addEventListener('click', handleClick);
+
+  async function handleClick() {
+    btn.disabled = true;
+    try {
+      if (!localState || !localState.active) {
+        // ACTIVAR — pede código do operador que inicia
+        var code = await openModal('Iniciar medição de tensões', 'Introduza o seu código de operador para iniciar.');
+        if (!code) return;
+        await stateRef.set({
+          active:       true,
+          operatorCode: code,
+          startedAt:    Date.now(),
+          endsAt:       Date.now() + DURATION_MS,
+          alertSent:    false
+        });
+      } else {
+        // DESACTIVAR — qualquer operador pode desligar (apenas pede código para registo)
+        var code = await openModal('Desativar sessão', 'Introduza o seu código de operador para terminar a sessão.', true);
+        if (!code) return;
+        var wasAlerted = localState.alertSent || false;
+        var startedBy  = localState.operatorCode || '—';
+        var startedAt  = localState.startedAt || null;
+        // Apagar estado
+        await stateRef.set({
+          active:       false,
+          operatorCode: '',
+          startedAt:    null,
+          endsAt:       null,
+          alertSent:    false
+        });
+        // Guardar histórico
+        await histRef.push({
+          startedBy:  startedBy,
+          endedBy:    code,
+          startedAt:  startedAt,
+          endedAt:    Date.now(),
+          alerted:    wasAlerted
+        });
+        hideToast();
+        alertMarked = false;
+      }
+    } catch (err) {
+      console.error('Erro Firebase:', err);
+      alert('Erro de ligação. Verifique a sua ligação à internet.');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ── Realtime listener ─────────────────────────────────
+  stateRef.on('value', function (snap) {
+    localState = snap.val();
+    render();
+  });
+
+  // ── History listener ──────────────────────────────────
+  histRef.orderByChild('endedAt').limitToLast(HISTORY_LIMIT).on('value', function (snap) {
+    var items = [];
+    snap.forEach(function (child) { items.unshift(child.val()); });
+    renderHistory(items);
+  });
+
+  // ── Connection state ──────────────────────────────────
+  db.ref('.info/connected').on('value', function (snap) {
+    var online = snap.val() === true;
+    connBadge.className = 'conn ' + (online ? 'online' : 'offline');
+    connText.textContent = online ? 'Online' : 'Offline';
+  });
+
+  // ── Tick ──────────────────────────────────────────────
+  setInterval(function () { if (localState && localState.active) render(); }, 1000);
+
+  // ── Render ────────────────────────────────────────────
+  function render() {
+    if (!localState || !localState.active) {
+      btn.classList.remove('armed');
+      statusPill.classList.remove('active');
+      statusPill.textContent = 'Inativo';
+      operatorVal.textContent = '—';
+      timerVal.textContent = '12:00';
+      timerVal.classList.remove('urgent');
+      stateVal.textContent = 'Aguarda início';
+      helperText.textContent = 'Prima para iniciar. O estado sincroniza em tempo real em todos os computadores.';
+      alertBanner.classList.remove('show');
+      hideToast();
+      alertMarked = false;
+      return;
+    }
+
+    var now       = Date.now();
+    var endsAt    = localState.endsAt || now;
+    var remaining = Math.max(0, endsAt - now);
+    var expired   = remaining <= 0;
+
+    btn.classList.add('armed');
+    statusPill.classList.add('active');
+    statusPill.textContent  = expired ? '⚠ Alerta ativo' : 'Medição ativa';
+    operatorVal.textContent = localState.operatorCode || '—';
+    timerVal.textContent    = expired ? '00:00' : fmtTime(remaining);
+    timerVal.classList.toggle('urgent', remaining < 90000);
+    stateVal.textContent    = expired ? 'Remover utente!' : 'Em contagem';
+    helperText.textContent  = 'Qualquer operador pode desativar. Prima o botão e introduza o seu código.';
+
+    if (!expired) {
+      alertBanner.classList.remove('show');
+      hideToast();
+    } else {
+      alertBanner.classList.add('show');
+      showToast();
+      if (!alertMarked && !localState.alertSent) {
+        alertMarked = true;
+        stateRef.update({ alertSent: true }).catch(function () {});
+        tryNotification();
+      }
+    }
+  }
+
+  // ── Toast ─────────────────────────────────────────────
+  function showToast() {
+    if (toastVis) return;
+    toastVis = true;
+    var t = document.createElement('div');
+    t.className = 'toast';
+    t.innerHTML =
+      '<button class="toast-close" aria-label="Fechar">✕</button>' +
+      '<div class="toast-title">🚨 Utente nas tensões!!!!</div>' +
+      '<div class="toast-body">Dirigir-se de imediato à zona de medição e retirar o utente.</div>' +
+      '<small>Iniciado pelo operador: ' + esc(localState ? localState.operatorCode : '—') + '</small>';
+    t.querySelector('.toast-close').addEventListener('click', function () {
+      t.classList.remove('show');
+      toastVis = false;
+      setTimeout(function () { if (t.parentNode) t.remove(); }, 250);
+    });
+    toastHost.appendChild(t);
+    toastEl = t;
+    requestAnimationFrame(function () { t.classList.add('show'); });
+  }
+
+  function hideToast() {
+    if (!toastVis) return;
+    toastVis = false;
+    if (toastEl) {
+      toastEl.classList.remove('show');
+      var ref = toastEl; toastEl = null;
+      setTimeout(function () { if (ref.parentNode) ref.remove(); }, 250);
+    }
+  }
+
+  // ── Browser notification ───────────────────────────────
+  function tryNotification() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      try { new Notification('🚨 Utente nas tensões!!!!', { body: 'Dirigir-se de imediato à zona de medição.' }); } catch (e) {}
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(function (p) {
+        if (p === 'granted') {
+          try { new Notification('🚨 Utente nas tensões!!!!', { body: 'Dirigir-se de imediato à zona de medição.' }); } catch (e) {}
+        }
+      }).catch(function () {});
+    }
+  }
+
+  // ── History render ─────────────────────────────────────
+  function renderHistory(items) {
+    if (!items.length) {
+      historyList.innerHTML = '<div style="color:var(--muted);font-size:.87rem;padding:4px 2px">Sem registos ainda.</div>';
+      return;
+    }
+    historyList.innerHTML = items.map(function (h) {
+      var ts   = h.endedAt ? new Date(h.endedAt) : null;
+      var time = ts ? ts.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'}) + ' ' + ts.toLocaleDateString('pt-PT') : '—';
+      var sameOp = h.startedBy === h.endedBy;
+      return '<div class="history-item">' +
+        '<span class="hi-left">Op. <strong>' + esc(h.startedBy||'—') + '</strong> → deslig. por <strong>' + esc(h.endedBy||'—') + '</strong>' + (sameOp ? ' (mesmo)' : '') + '</span>' +
+        (h.alerted ? '<span class="hi-alerted">⚠ alerta</span>' : '') +
+        '<span class="hi-right">' + time + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  // ── Utils ─────────────────────────────────────────────
+  function fmtTime(ms) {
+    var s = Math.max(0, Math.ceil(ms / 1000));
+    return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+  }
+  function esc(t) {
+    return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+})();
+</script>
+</body>
+</html>
